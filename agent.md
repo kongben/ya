@@ -475,3 +475,23 @@ YA_INSTALL=<url>        # 免确认走完整安装链路
   走的是信号，在 signal handler 里写日志容易死锁在锁上，**这里不接信号**，这类崩溃靠
   「上次退出：异常」发现（见坑 34）。
 - 白屏不弹错：见坑 33，靠 `__yaScriptLoaded` + `WKNavigationDelegate` 自愈。
+
+## 13. Git 与提交约定
+
+- 仓库：`origin = https://github.com/kongben/ya.git`，**默认分支 `master`**。
+- **commit message 一律用英文**（历史要能被任何人直接读懂，也避免中英混排）。
+  格式用 Conventional Commits 的简版：
+
+  ```
+  <type>: <imperative summary under 72 chars>
+
+  - optional bullet: why, not what
+  ```
+
+  `type` 取 `feat` / `fix` / `refactor` / `perf` / `test` / `docs` / `chore` / `build`；
+  示例：`fix: keep plugin viewport floor after exit`、`chore: ignore build output`。
+- 一次提交只做一件事：改代码和跑测试分开写，方便 revert。
+- 提交前跑 `./test.sh`（Swift + Web 全量），红着不许提交。
+- `.gitignore` 已经挡掉 `.build/`、`dist/`、`Sources/ya/Web/shell.js`、
+  `Tests/web/node_modules/`、`.DS_Store`；**别用 `git add -f` 把这些塞进来**。
+  注意 `shell.js` 是 `tsc --outFile` 的产物，改行为要改 `Sources/ya/Web/*.ts`。
