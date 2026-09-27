@@ -1,0 +1,308 @@
+/* ---- 主题 ----
+   颜色只在这两个 :root 块里出现，下面所有规则一律 var() 引用。
+   - 深色写在外层 :root（无媒体查询）= 默认值；
+   - 浅色由 `@media (prefers-color-scheme: light)` 覆盖 = **跟随系统**（默认行为）；
+   - 手动切换不用第二份 CSS：原生设置 `NSApp.appearance`（见 Theme.swift），
+     WKWebView 的 `prefers-color-scheme` 跟着它变，所以这里不需要 data-theme 之类的覆盖块。
+   任何一条规则里写死颜色，换主题时那一块就永远停在深色，而且极难看出为什么。 */
+:root {
+  /* 让原生滚动条 / 表单控件跟着换（WebKit 靠它决定滚动条明暗） */
+  color-scheme: dark;
+
+  --ya-bg: rgba(26, 26, 31, 0.97);        /* 面板背景 */
+  --ya-surface: rgba(38, 38, 44, 0.98);   /* 浮层（右键菜单）比背景高一层 */
+  --ya-fg: #e8e8ea;                       /* 主文字 */
+  --ya-fg-strong: #ffffff;                /* 强调文字 */
+  --ya-sub: #88888e;                      /* 副标题 */
+  --ya-muted: #66666c;                    /* 更弱的提示（底栏） */
+  --ya-group: #6a6a70;                    /* 分组标题 */
+  --ya-placeholder: #5a5a60;
+  --ya-accent: #4da3ff;
+  --ya-sel: rgba(77, 163, 255, 0.25);     /* 选中行 */
+  --ya-hover: rgba(255, 255, 255, 0.08);  /* 悬停 / 占位底 */
+  --ya-border: rgba(255, 255, 255, 0.08); /* 分隔线 */
+  --ya-border-strong: rgba(255, 255, 255, 0.1); /* 面板外框 / 浮层描边 */
+  --ya-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+  --ya-grab: rgba(255, 255, 255, 0.16);       /* 拖拽条横杠 */
+  --ya-grab-hover: rgba(255, 255, 255, 0.34);
+  --ya-ring: rgba(255, 255, 255, 0.25);       /* 色块内描边，浅色背景也能看清边界 */
+  --ya-radius: 8px;
+  --ya-font: -apple-system, "PingFang SC", "Helvetica Neue", sans-serif;
+}
+
+/* 浅色：系统外观为浅色时整块替换（变量重名即覆盖，选择器不变） */
+@media (prefers-color-scheme: light) {
+  :root {
+    color-scheme: light;
+
+    --ya-bg: rgba(246, 246, 248, 0.98);
+    --ya-surface: rgba(255, 255, 255, 0.98);
+    --ya-fg: #1d1d20;
+    --ya-fg-strong: #0d0d10;
+    --ya-sub: #56565c;
+    --ya-muted: #6e6e75;
+    --ya-group: #7a7a80;
+    --ya-placeholder: #9a9aa2;
+    --ya-accent: #0a6cff;                   /* 比深色的蓝更实一点，白底上才够对比 */
+    --ya-sel: rgba(10, 108, 255, 0.16);
+    --ya-hover: rgba(0, 0, 0, 0.06);
+    --ya-border: rgba(0, 0, 0, 0.1);
+    --ya-border-strong: rgba(0, 0, 0, 0.14);
+    --ya-shadow: 0 8px 24px rgba(0, 0, 0, 0.16);
+    --ya-grab: rgba(0, 0, 0, 0.18);
+    --ya-grab-hover: rgba(0, 0, 0, 0.36);
+    --ya-ring: rgba(0, 0, 0, 0.2);
+  }
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+html, body {
+  background: transparent;
+  height: 100%;
+  overflow: hidden;
+}
+
+body {
+  font-family: var(--ya-font);
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+#root {
+  position: relative; /* 右键菜单相对面板定位 */
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  background: var(--ya-bg);
+  border: 1px solid var(--ya-border-strong);
+  border-radius: 12px;
+  color: var(--ya-fg);
+  overflow: hidden;
+}
+
+/* ---- 顶部拖拽条 ----
+   面板是 borderless 窗口，没有标题栏，光靠「空白处能拖」用户发现不了。
+   这里固定留一条 12px 的抓手：上面按下即拖（不走 4px 阈值），
+   中间那道小横杠是唯一的可视提示，平时很淡，hover / 拖动时才亮起来。 */
+#dragbar {
+  flex: none;
+  height: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: default;
+}
+
+#dragbar .grabber {
+  width: 36px;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--ya-grab);
+  /* 抓手只是装饰：命中必须落在 #dragbar 上，否则 closest() 判不到「按在拖拽条上」 */
+  pointer-events: none;
+  transition: background 0.12s ease;
+}
+
+#dragbar:hover .grabber { background: var(--ya-grab-hover); }
+#dragbar.dragging .grabber { background: var(--ya-accent); }
+
+/* ---- 搜索栏 ---- */
+#searchbar {
+  flex: none; /* 面板矮的时候不能把搜索栏压扁 */
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  /* 上边留给拖拽条的 12px，这里从 14 收到 8：加一条拖拽区不该让面板整体长高 */
+  padding: 8px 16px 14px;
+  border-bottom: 1px solid var(--ya-border);
+}
+
+/* App 图标（内联 data URL，见 index.html）：面板里显示为 20px，源图 64px 保证 Retina 不发虚 */
+#logo {
+  display: flex;
+  align-items: center;
+  flex: none;
+}
+
+#logo img {
+  width: 20px;
+  height: 20px;
+  border-radius: 5px;
+  display: block;
+}
+
+#input {
+  flex: 1;
+  background: transparent;
+  border: none;
+  outline: none;
+  color: var(--ya-fg-strong);
+  font-size: 17px;
+  caret-color: var(--ya-accent);
+}
+
+#input::placeholder { color: var(--ya-placeholder); }
+
+/* 进入插件后收起搜索栏（交互交给插件）。
+   注意：不能用 display:none —— 输入框必须还能聚焦，否则键盘输入收不到，
+   插件的 onQuery / onKey 会一起失效。改成移到屏幕外但保留尺寸。 */
+#searchbar.off {
+  position: absolute;
+  left: -9999px;
+  top: 0;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  border: none;
+  opacity: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+/* ---- 输入框右键菜单 ---- */
+#ctxMenu {
+  position: absolute;
+  z-index: 99;
+  min-width: 148px;
+  padding: 4px;
+  background: var(--ya-surface);
+  border: 1px solid var(--ya-border-strong);
+  border-radius: 8px;
+  box-shadow: var(--ya-shadow);
+  font-size: 13px;
+}
+
+.ctx-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 5px 10px;
+  border-radius: 6px;
+  cursor: default;
+}
+
+.ctx-item:hover { background: var(--ya-sel); }
+.ctx-key { color: var(--ya-sub); font-size: 11px; }
+
+/* ---- 结果区 ---- */
+#content { flex: 1; overflow-y: auto; }
+
+#results { list-style: none; padding: 6px; }
+
+#results li {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+#results li.sel { background: var(--ya-sel); }
+
+/* 分组标题行 */
+#results li.group { padding: 10px 10px 4px; cursor: default; }
+.group-title {
+  font-size: 11px;
+  color: var(--ya-group);
+  letter-spacing: 1px;
+}
+
+#results img { width: 28px; height: 28px; border-radius: 6px; }
+
+/* 图标还没取回来时的占位方块 */
+.dot {
+  width: 28px; height: 28px;
+  border-radius: 6px;
+  background: var(--ya-hover);
+}
+
+/* 万能输入框的颜色预览：左侧实心小方块 */
+.swatch {
+  width: 28px; height: 28px;
+  flex: none;
+  border-radius: 6px;
+  box-shadow: inset 0 0 0 0.5px var(--ya-ring);
+}
+
+.item-main { min-width: 0; }
+.item-title { font-size: 14px; }
+.item-sub {
+  font-size: 11px;
+  color: var(--ya-sub);
+  max-width: 560px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ---- 网格视图：最近使用 / 我的插件 ---- */
+/* 一行放 6 个卡片，避免「一个 app 占一行」浪费纵向空间 */
+#results li.gridrow { display: block; padding: 0; cursor: default; }
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 4px;
+  padding: 6px 10px 8px;
+}
+
+.cell {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+  padding: 8px 4px 6px;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+#results .cell.sel { background: var(--ya-sel); }
+#results .cell img { width: 40px; height: 40px; border-radius: 9px; }
+#results .cell .dot {
+  width: 40px; height: 40px;
+  border-radius: 9px;
+  background: var(--ya-hover);
+}
+
+.cell-name {
+  font-size: 11px;
+  line-height: 1.3;
+  text-align: center;
+  max-width: 100%;
+  /* 最多两行，超出省略 */
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  word-break: break-word;
+}
+
+/* ---- 插件视图 ----
+   只放容器本身的基础样式。具体插件的样式写在各自目录的 style.css，
+   由宿主注入（带 .ya-plugin-<id> 作用域），不再堆在这里。
+
+   高度不交给插件：宿主把 min/max-height 打到同一个值上（见 ui.ts.applyPluginViewport），
+   视口高度在切换的那一刻就定了；内容超过就在**这里面**滚动。
+   以前每个插件自己 clamp 高度（320 / 900 各写各的），结果每敲一个字面板尺寸就换一档。 */
+#pluginView {
+  padding: 14px 16px;
+  color: var(--ya-fg);
+  font-size: 14px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  scrollbar-width: thin;
+}
+
+/* ---- 底栏 ---- */
+#footer {
+  flex: none; /* 同上：内容区挤的时候优先压 #content，不压底栏 */
+  padding: 8px 14px;
+  font-size: 11px;
+  color: var(--ya-muted);
+  border-top: 1px solid var(--ya-border);
+}
+
+.hidden { display: none !important; }

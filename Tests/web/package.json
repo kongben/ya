@@ -1,0 +1,12 @@
+{
+  "name": "ya-web-tests",
+  "private": true,
+  "type": "module",
+  "description": "宿主前端（shell.js）的单元测试：node:test + jsdom，加载真实构建产物",
+  "scripts": {
+    "test": "node --test *.test.mjs"
+  },
+  "devDependencies": {
+    "jsdom": "^30.1.1"
+  }
+}

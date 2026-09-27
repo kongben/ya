@@ -1,0 +1,11 @@
+{
+  "name": { "en": "Hello Demo", "zh": "示例插件" },
+  "keyword": "hi",
+  "keywords": ["hi", "hello"],
+  "version": "1.0.0",
+  "icon": "\uD83D\uDC4B",
+  "description": {
+    "en": "User plugin demo — echoes your input",
+    "zh": "用户插件示例 —— 回显你输入的内容"
+  }
+}

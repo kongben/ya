@@ -1,0 +1,21 @@
+/* 示例插件样式：宿主注入时会自动加上 .ya-plugin-hello 作用域前缀。
+   可以直接用宿主提供的主题变量（--ya-*）。 */
+
+.hi-echo {
+  font-size: 26px;
+  font-weight: 600;
+  padding: 18px 4px;
+  color: var(--ya-accent);
+}
+
+.hi-hint {
+  font-size: 12px;
+  color: var(--ya-sub);
+  padding: 0 4px;
+}
+
+.hi-empty {
+  color: var(--ya-muted);
+  padding: 24px 4px;
+  font-size: 14px;
+}

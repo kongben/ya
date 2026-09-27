@@ -1,0 +1,28 @@
+# ---- macOS ----
+.DS_Store
+
+# ---- SwiftPM ----
+# .build 是 swift build / swift test 的产物（release 可执行文件也在里面）
+.build/
+.swiftpm/
+# Package.resolved 要入库：锁定依赖版本，换机器才能编出一样的东西
+
+# ---- 打包产物 ----
+# dist/ya.app 由 ./package.sh 生成
+dist/
+
+# ---- TypeScript 编译产物 ----
+# build.sh / test.sh 用 tsc --outFile 把 bridge/types/match/ui/edit/shell 合成 shell.js，
+# 每次构建都重写，入库只会造成无意义的冲突
+Sources/ya/Web/shell.js
+Sources/ya/Web/bridge.js
+
+# ---- 前端单测依赖 ----
+# Tests/web 有自己的 .gitignore（node_modules/ 与 package-lock.json），
+# 这里只补一层：万一换个地方装依赖也不会被提交上去
+Tests/web/node_modules/
+
+# ---- 日志与临时文件 ----
+*.log
+tmp/
+.tmp/
